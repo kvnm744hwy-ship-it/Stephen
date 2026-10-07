@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>診所病人預約資料檢視小卡</title>
+    <!-- Office.js SDK -->
+    <script src="https://officeapis.public.onecdn.static.microsoft/1/office.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 12px;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+
+        #content {
+            padding: 5px;
+        }
+
+        h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #0078d4;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 6px;
+        }
+
+        .card {
+            padding: 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        .card p {
+            margin: 8px 0;
+            color: #333333;
+        }
+
+        .card strong {
+            color: #0078d4;
+            display: inline-block;
+            width: 80px;
+        }
+
+        .empty-hint {
+            color: #666666;
+            font-style: italic;
+            text-align: center;
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <h3>病人個人資料</h3>
+        <div id="details">
+            <div class="card empty-hint">
+                請點選試算表中的任意預約儲存格...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Office.onReady(async (info) => {
+            if (info.host === Office.HostType.Excel) {
+                try {
+                    await Excel.run(async (context) => {
+                        // 監聽全活頁簿變更，切換工作表/分頁也不會失效
+                        context.workbook.onSelectionChanged.add(onSelectionChange);
+                        await context.sync();
+                        console.log("已成功監聽全活頁簿儲存格變更！");
+                    });
+                } catch (error) {
+                    console.error("初始化失敗：", error);
+                }
+            }
+        });
+
+        // 將 Excel 日期序列號轉為 YYYY/MM/DD 格式 (使用 UTC 避免時區偏差)
+        function formatExcelDate(val) {
+            if (!val) return "";
+            if (typeof val === "number" && val > 30000) {
+                const jsDate = new Date(Math.round((val - 25569) * 86400 * 1000));
+                const year = jsDate.getUTCFullYear();
+                const month = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(jsDate.getUTCDate()).padStart(2, '0');
+                return `${year}/${month}/${day}`;
+            }
+            return String(val).trim();
+        }
+
+        async function onSelectionChange(event) {
+            try {
+                await Excel.run(async (context) => {
+                    // 1. 取得目前選取的儲存格
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["values", "rowIndex", "columnIndex"]);
+                    await context.sync();
+
+                    const currentRow = range.rowIndex;
+                    const currentCol = range.columnIndex;
+
+                    // 忽略第 1 列 (index 0) 與 第 2 列 (index 1) 的標題列點擊
+                    if (currentRow < 2) return;
+
+                    const sheet = context.workbook.worksheets.getActiveWorksheet();
+
+                    // 讀取當前點擊欄位的第 1 列與第 2 列 (日期與星期)
+                    const dateRange = sheet.getRangeByIndexes(0, currentCol, 2, 1);
+                    dateRange.load("values");
+
+                    // 讀取：本列、上一列、下一列 (防止底部越界)
+                    const currentValRange = range;
+                    const prevCellRange = sheet.getRangeByIndexes(Math.max(2, currentRow - 1), currentCol, 1, 1);
+                    const nextCellRange = sheet.getRangeByIndexes(Math.min(currentRow + 1, 1048575), currentCol, 1, 1);
+
+                    // 讀取 A 欄看診時段 (從第 3 列 index 2 開始)
+                    const aSearchStart = 2; // A3
+                    const aRowCount = Math.max(1, currentRow - aSearchStart + 1);
+                    const columnARange = sheet.getRangeByIndexes(aSearchStart, 0, aRowCount, 1);
+
+                    currentValRange.load("values");
+                    prevCellRange.load("values");
+                    nextCellRange.load("values");
+                    columnARange.load("values");
+
+                    await context.sync();
+
+                    // 解析與格式化日期資訊 (動態對應當前欄位)
+                    const rawDateStr = formatExcelDate(dateRange.values[0][0]);
+                    const rawWeekStr = String(dateRange.values[1][0] || "").trim();
+                    let dateValue = [rawDateStr, rawWeekStr].filter(Boolean).join(" ");
+
+                    let currentVal = String(currentValRange.values[0][0] || "").trim();
+                    let prevVal = currentRow > 2 ? String(prevCellRange.values[0][0] || "").trim() : "";
+                    let nextVal = String(nextCellRange.values[0][0] || "").trim();
+
+                    // 空白儲存格不處理
+                    if (!currentVal) return;
+
+                    // 電話判斷：包含 0 開頭且 7 位數以上的號碼 (包含帶 - 符號)
+                    const hasPhone = (text) => /0\d[\d-]{6,10}/.test(text.replace(/\s+/g, ""));
+
+                    let combinedText = currentVal;
+                    let targetRowIndex = currentRow;
+
+                    // 上下列自動組合判斷
+                    if (!hasPhone(currentVal) && hasPhone(nextVal)) {
+                        combinedText = currentVal + " " + nextVal;
+                        targetRowIndex = currentRow;
+                    } else if (hasPhone(currentVal) && !hasPhone(prevVal) && prevVal !== "" && currentRow > 2) {
+                        combinedText = prevVal + " " + currentVal;
+                        targetRowIndex = currentRow - 1;
+                    }
+
+                    // 計算看診時段 (在 A 欄範圍內向上尋找最近的非空白格)
+                    let timeValue = "";
+                    const aValues = columnARange.values;
+                    const relativeTargetIndex = targetRowIndex - aSearchStart;
+
+                    for (let i = Math.min(relativeTargetIndex, aValues.length - 1); i >= 0; i--) {
+                        const val = String(aValues[i][0] || "").trim();
+                        if (val) {
+                            timeValue = val;
+                            break;
+                        }
+                    }
+
+                    // 拆解病歷號、姓名、電話
+                    let chartNo = "無";
+                    let name = combinedText;
+                    let phone = "無";
+
+                    const phoneMatch = combinedText.match(/0\d[\d-]{6,10}/);
+                    let contentWithoutPhone = combinedText;
+
+                    if (phoneMatch) {
+                        phone = phoneMatch[0];
+                        contentWithoutPhone = combinedText.replace(phone, "").trim();
+                    }
+
+                    const chartNoMatch = contentWithoutPhone.match(/^[A-Za-z]{1,2}\d{3,5}/);
+                    if (chartNoMatch) {
+                        chartNo = chartNoMatch[0];
+                        name = contentWithoutPhone.substring(chartNo.length).trim();
+                    } else {
+                        name = contentWithoutPhone;
+                    }
+
+                    // 渲染小卡片 HTML
+                    const html = `
+                        <div class="card">
+                            <p><strong>檢查日期：</strong> ${dateValue || "未指定"}</p>
+                            <p><strong>檢查時段：</strong> ${timeValue || "未指定"}</p>
+                            <p><strong>病歷號：</strong> ${chartNo}</p>
+                            <p><strong>姓名：</strong> ${name}</p>
+                            <p><strong>電話：</strong> ${phone}</p>
+                        </div>
+                    `;
+
+                    const container = document.getElementById("details");
+                    if (container) {
+                        container.innerHTML = html;
+                    }
+                });
+            } catch (err) {
+                console.error("執行選擇變更時發生錯誤：", err);
+            }
+        }
+    </script>
+</body>
+</html>
