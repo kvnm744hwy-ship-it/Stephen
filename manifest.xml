@@ -13,15 +13,15 @@
   <DisplayName DefaultValue="診所病人預約檢視小卡"/>
   <Description DefaultValue="點擊 Excel 預約儲存格即可自動顯示病人卡片。"/>
 
-  <IconUrl DefaultValue="https://YOUR_GITHUB_USERNAME.github.io/clinic-addin/icon.png"/>
-  <HighResolutionIconUrl DefaultValue="https://YOUR_GITHUB_USERNAME.github.io/clinic-addin/icon.png"/>
+  <IconUrl DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/icon.png"/>
+  <HighResolutionIconUrl DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/icon.png"/>
 
   <Hosts>
     <Host Name="Workbook"/>
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://YOUR_GITHUB_USERNAME.github.io/clinic-addin/index.html"/>
+    <SourceLocation DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/index.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -61,12 +61,12 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16" DefaultValue="https://kvnm744hwy-ship-it.github.io/clinic-addin/icon.png"/>
-        <bt:Image id="Icon.32" DefaultValue="https://kvnm744hwy-ship-it.github.io/clinic-addin/icon.png"/>
-        <bt:Image id="Icon.80" DefaultValue="https://kvnm744hwy-ship-it.github.io/clinic-addin/icon.png"/>
+        <bt:Image id="Icon.16" DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/icon.png"/>
+        <bt:Image id="Icon.32" DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/icon.png"/>
+        <bt:Image id="Icon.80" DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/icon.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://YOUR_GITHUB_USERNAME.github.io/clinic-addin/index.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://kvnm744hwy-ship-it.github.io/Stephen/index.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="預約工具"/>
